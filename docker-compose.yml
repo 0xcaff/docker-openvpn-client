@@ -1,0 +1,65 @@
+version: '3.4'
+
+# TODO: Do something about startup order.
+
+services:
+  # This is the vpn service responsible for establishing a connection to the VPN
+  # server and sending traffic to it.
+  vpn:
+    image: 0xcaff/openvpn-client
+
+    # Extra permissions required for the image to function.
+    cap_add:
+      - net_admin
+    devices:
+      - /dev/net/tun
+
+    # If you need to interactively enter your password, un-comment the following
+    # lines.
+    # stdin_open: true
+    # tty: true
+
+    # The ovpn configuration file must be present at the /vpn/config/config.ovpn
+    # path.
+    volumes:
+      - ./config/:/vpn/config/
+
+    # The only allowed traffic leaving this container is to this network and the
+    # specified ip, port, and protocol.
+    networks:
+      - local
+    environment:
+      VPN_ALLOW_IP_ADDRESS: 178.60.78.125
+
+  # This service utilizes the VPN connection using network_mode.
+  vpn_consumer:
+    image: jwilder/whoami
+
+    # This container binds to port 8000.
+
+    # Share the network stack of the vpn client container. When this container
+    # binds ports, they can be reached through the vpn service. This also adds a
+    # depnds_on for the vpn service.
+    network_mode: service:vpn
+
+  # This container has access to the vpn_consumer container (and the vpn
+  # container because they share the same network stack) through the "local"
+  # network. It also has direct access to the internet.
+  web:
+    image: buildpack-deps:stretch-curl
+    depends_on:
+      - vpn_consumer
+
+    # Connect to the "local" network to connect to the vpn_consumer service
+    # through the vpn service.
+    networks:
+      - local
+
+    # vpn_consumer shares the network stack of vpn. The vpn can by reached by using
+    # the name of the service container as a hostname.
+    command: sh -c "curl 'https://api.ipify.org?format=json' && curl -v 'http://vpn:8000/'"
+
+networks:
+  # A network for connecting the web service to vpn_consumer (and the vpn service
+  # which it shares a network stack with).
+  local:
