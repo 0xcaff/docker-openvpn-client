@@ -1,0 +1,11 @@
+system.daemon.set = true
+
+check_hash = yes
+directory = ~/downloaded
+session = ~/.rtorrent.session
+
+encryption = allow_incoming,try_outgoing,enable_retry
+
+dht = auto
+dht_port = 6881
+scgi_port = 0.0.0.0:5000

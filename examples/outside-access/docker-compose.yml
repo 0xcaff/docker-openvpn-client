@@ -1,12 +1,10 @@
 version: '3.4'
 
-# TODO: Do something about startup order.
-
 services:
   # This is the vpn service responsible for establishing a connection to the VPN
   # server and sending traffic to it.
   vpn:
-    image: 0xcaff/openvpn-client
+    image: 0xcaff/openvpn-client:latest
 
     # Extra permissions required for the image to function.
     cap_add:
@@ -24,12 +22,8 @@ services:
     volumes:
       - ./config/:/vpn/config/
 
-    # The only allowed traffic leaving this container is to this network and the
-    # specified ip, port, and protocol.
     networks:
       - local
-    environment:
-      VPN_ALLOW_IP_ADDRESS: 178.60.78.125
 
   # This service utilizes the VPN connection using network_mode.
   vpn_consumer:

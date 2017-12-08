@@ -1,0 +1,58 @@
+version: '3.4'
+
+services:
+  # This container sets up a firewall which only allows traffic to the docker
+  # network and the specified destination (ip, port protocol). See its repo for
+  # more information: https://github.com/0xcaff/docker-simple-firewall
+  firewall:
+    image: 0xcaff/simple-firewall:latest
+    cap_add:
+      - net_admin
+    environment:
+      ALLOW_IP_ADDRESS: 168.112.194.239
+      ALLOW_PORT: 1194
+      ALLOW_PROTO: udp
+
+      # TCP connections will be accepted at this port once the firewall is
+      # configured.
+      FIREWALL_READY_SIGNAL_PORT: 60000
+
+  # This is the vpn service responsible for establishing a connection to the VPN
+  # server and sending traffic to it.
+  vpn:
+    image: 0xcaff/openvpn-client:latest
+
+    # Extra permissions required for the image to function.
+    cap_add:
+      - net_admin
+    devices:
+      - /dev/net/tun
+    network_mode: service:firewall
+
+    # The ovpn configuration file must be present at the /vpn/config/config.ovpn
+    # path.
+    volumes:
+      - ./config/:/vpn/config/
+      - ./wait-for/wait-for:/wait-for
+
+    # Wait for the firewall to be ready before starting the VPN. This makes
+    # mis-configuration issues like making a connection to a non-allowed place
+    # explicit.
+    command: "/wait-for localhost:60000 -- openvpn --config /vpn/config/config.ovpn"
+
+  # This service utilizes the VPN connection using network_mode.
+  rtorrent:
+    image: quay.io/0xcaff/rtorrent:latest
+
+    # Volumes required for this image to function.
+    volumes:
+      - ./.rtorrent.rc:/rtorrent/.rtorrent.rc
+      - ./wait-for/wait-for:/wait-for
+
+    network_mode: service:firewall
+
+    # Waits for the firewall to be set up before running rtorrent. The VPN may
+    # or may not be ready but no traffic will be leaked because the firewall is
+    # up.
+    command: "/wait-for localhost:60000 -- rtorrent"
+    entrypoint: "/bin/sh"
