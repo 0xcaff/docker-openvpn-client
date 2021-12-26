@@ -13,4 +13,4 @@ HEALTHCHECK --interval=60s --timeout=15s --start-period=120s \
 # This is where the configuration files will go.
 VOLUME [ "/vpn/config" ]
 
-CMD [ "openvpn", "--config", "/vpn/config/config.ovpn" ]
+CMD [ "openvpn", "--ncp-disable", "--dev tun", "--config", "/vpn/config/config.ovpn" ]
